@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1">
+<title>Quick App</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Quick App">
+<meta name="theme-color" content="#2E6B50">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<style>
+:root{
+  --paper:#F3F4EE; --ink:#1E2A24; --green:#2E6B50; --green-deep:#22513C;
+  --rule:#CDD8D0; --red:#B94A48; --muted:#68766E; --field:#FFFFFF; --tint:#E6EDE7;
+  --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--paper);color:var(--ink);
+  font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;
+  -webkit-text-size-adjust:100%}
+body{display:flex;flex-direction:column;min-height:100dvh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+h1{font-size:22px;font-weight:600;letter-spacing:-.01em}
+h2{font-size:17px;font-weight:600;margin:22px 0 8px}
+p{color:var(--muted);font-size:14px}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 16px calc(84px + var(--safe-b))}
+.screen{display:none}.screen.on{display:block}
+header{display:flex;align-items:baseline;justify-content:space-between;padding:6px 0 10px}
+header small{color:var(--muted);font-size:13px}
+
+/* ---- ledger-paper texture: ruled lines behind lists ---- */
+.ruled{background:repeating-linear-gradient(to bottom,transparent 0 47px,var(--rule) 47px 48px);
+  border-top:1px solid var(--rule)}
+
+/* ---- amount hero ---- */
+.amount{display:flex;align-items:center;gap:10px;padding:14px 0 6px}
+.amount .cur{font-size:26px;color:var(--muted)}
+.amount input{flex:1;font-size:54px;font-weight:300;letter-spacing:-.03em;background:none;border:0;outline:0;
+  font-variant-numeric:tabular-nums;color:var(--red);min-width:0}
+.amount input.in{color:var(--green)}
+.amount input::placeholder{color:#B9C4BC}
+.sign{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;background:var(--field)}
+.sign button{padding:8px 14px;font-size:14px;color:var(--muted)}
+.sign button.on{background:var(--ink);color:var(--paper)}
+
+/* ---- chips ---- */
+.chips{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{white-space:nowrap;padding:8px 14px;border-radius:999px;border:1px solid var(--rule);background:var(--field);font-size:15px}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff}
+
+/* ---- fields ---- */
+.field{display:flex;align-items:center;min-height:48px;border-bottom:1px solid var(--rule)}
+.field label{width:88px;flex:none;color:var(--muted);font-size:14px}
+.field input,.field select,.field textarea,.field .pick{flex:1;background:none;border:0;outline:0;padding:12px 0;font-size:16px;min-width:0;text-align:left}
+.field .pick{display:flex;justify-content:space-between;align-items:center}
+.field .pick span.ph{color:#9AA69E}
+.field .pick::after{content:"›";color:var(--muted);font-size:20px}
+.field input[type=date]{-webkit-appearance:none;appearance:none}
+.hint{font-size:13px;color:var(--muted);padding:6px 0}
+
+/* ---- splits ---- */
+.splits{margin:8px 0}
+.split{display:grid;grid-template-columns:1fr 92px 34px;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--rule)}
+.split .pick{padding:8px 0;font-size:15px}
+.split input{border:0;border-bottom:1px solid var(--rule);background:none;outline:0;padding:6px 0;text-align:right;font-variant-numeric:tabular-nums}
+.split button{color:var(--red);font-size:20px}
+.split-total{display:flex;justify-content:space-between;font-size:13px;color:var(--muted);padding:6px 0}
+.split-total.bad{color:var(--red)}
+
+/* ---- buttons ---- */
+.btn{display:block;width:100%;padding:15px;border-radius:10px;background:var(--green);color:#fff;font-size:17px;font-weight:600;margin-top:22px}
+.btn:active{background:var(--green-deep)}
+.btn.quiet{background:var(--field);color:var(--ink);border:1px solid var(--rule);font-weight:500}
+.btn.danger{background:var(--field);color:var(--red);border:1px solid var(--rule);font-weight:500}
+.btn:disabled{opacity:.45}
+.link{color:var(--green);font-size:15px;padding:8px 0}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+
+/* ---- ledger list ---- */
+.group{margin-top:18px}
+.group-head{display:flex;justify-content:space-between;align-items:baseline;padding:0 0 4px;border-bottom:2px solid var(--ink)}
+.group-head b{font-size:16px}
+.group-head span{font-variant-numeric:tabular-nums;font-size:14px;color:var(--muted)}
+.tx{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center;height:48px;text-align:left;width:100%}
+.tx .d{font-size:12px;color:var(--muted);line-height:1.15}
+.tx .d b{display:block;font-size:15px;color:var(--ink);font-weight:500}
+.tx .p{overflow:hidden}
+.tx .p b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx .p small{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.tx .a{font-variant-numeric:tabular-nums;font-size:16px;color:var(--red)}
+.tx .a.in{color:var(--green)}
+.tx.done{opacity:.5}
+.empty{padding:40px 12px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);font-weight:500;margin-bottom:6px}
+
+/* ---- tab bar ---- */
+nav{position:fixed;left:0;right:0;bottom:0;display:flex;background:rgba(243,244,238,.94);backdrop-filter:blur(10px);
+  border-top:1px solid var(--rule);padding:6px 0 calc(6px + var(--safe-b))}
+nav button{flex:1;padding:8px 0 4px;font-size:12px;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:3px}
+nav button svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+nav button.on{color:var(--green)}
+nav .badge{position:absolute;margin-left:22px;margin-top:-4px;background:var(--red);color:#fff;font-size:10px;border-radius:9px;padding:1px 5px}
+
+/* ---- picker sheet ---- */
+.sheet{position:fixed;inset:0;background:rgba(30,42,36,.35);display:none;align-items:flex-end;z-index:20}
+.sheet.on{display:flex}
+.sheet .panel{background:var(--paper);width:100%;max-height:82dvh;border-radius:16px 16px 0 0;display:flex;flex-direction:column;padding-bottom:var(--safe-b)}
+.sheet .bar{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--rule)}
+.sheet .bar input{flex:1;background:var(--field);border:1px solid var(--rule);border-radius:8px;padding:9px 12px;outline:0}
+.sheet .list{overflow-y:auto;padding:4px 0}
+.sheet .opt{display:block;width:100%;text-align:left;padding:13px 16px;border-bottom:1px solid var(--rule);font-size:16px}
+.sheet .opt small{color:var(--muted);margin-left:6px}
+.sheet .opt.sect{font-size:13px;color:var(--muted);background:var(--tint);padding:6px 16px}
+.sheet .opt.new{color:var(--green)}
+
+/* ---- setup ---- */
+.card{background:var(--field);border:1px solid var(--rule);border-radius:10px;padding:14px 16px;margin-top:10px}
+.card .count{font-size:34px;font-weight:300;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.card .count small{font-size:14px;color:var(--muted);font-weight:400;margin-left:4px}
+.setting{display:flex;justify-content:space-between;align-items:center;min-height:48px;border-bottom:1px solid var(--rule);gap:10px}
+.setting span{font-size:15px}
+.setting select,.setting input[type=text]{background:var(--field);border:1px solid var(--rule);border-radius:8px;padding:7px 10px;outline:0;max-width:52%}
+input[type=file]{display:none}
+.toast{position:fixed;left:50%;bottom:calc(96px + var(--safe-b));transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--paper);
+  padding:10px 16px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none;z-index:30;max-width:90vw;text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<main>
+<!-- ============ ENTER ============ -->
+<section id="s-enter" class="screen on">
+  <header><h1 id="enter-title">New transaction</h1><small id="enter-sub"></small></header>
+
+  <div class="amount">
+    <span class="cur">$</span>
+    <input id="f-amount" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
+    <div class="sign"><button id="sign-out" class="on">Spent</button><button id="sign-in">Received</button></div>
+  </div>
+
+  <div id="acct-chips" class="chips"></div>
+
+  <div class="field"><label for="f-date">Date</label><input id="f-date" type="date"></div>
+  <div class="field"><label for="f-payee">Payee</label><input id="f-payee" type="text" placeholder="Who was paid" autocomplete="off" autocapitalize="words" list="payee-list"><datalist id="payee-list"></datalist></div>
+  <div class="field" id="cat-field"><label>Category</label><button class="pick" id="f-cat"><span class="ph">Choose category</span></button></div>
+  <div class="field"><label for="f-memo">Memo</label><input id="f-memo" type="text" placeholder="Optional" autocomplete="off"></div>
+  <div class="field"><label for="f-num">Ref / cheque</label><input id="f-num" type="text" placeholder="Optional" autocomplete="off"></div>
+
+  <button class="link" id="toggle-splits">Split across categories</button>
+  <div id="splits" class="splits" style="display:none"></div>
+
+  <button class="btn" id="save">Save transaction</button>
+  <button class="btn quiet" id="cancel-edit" style="display:none">Cancel</button>
+  <button class="btn danger" id="delete-tx" style="display:none">Delete transaction</button>
+</section>
+
+<!-- ============ LEDGER ============ -->
+<section id="s-ledger" class="screen">
+  <header><h1>Ledger</h1><small id="ledger-sub"></small></header>
+  <div id="ledger"></div>
+  <button class="btn" id="export">Export QIF for Quicken</button>
+  <div class="row2">
+    <button class="btn quiet" id="show-exported">Show exported</button>
+    <button class="btn danger" id="clear-exported">Clear exported</button>
+  </div>
+</section>
+
+<!-- ============ SETUP ============ -->
+<section id="s-setup" class="screen">
+  <header><h1>Setup</h1></header>
+  <p>Export your account and category lists from Quicken (File › Export › QIF file, tick only “Account list” and “Category list”), send the file to your phone, then load it here.</p>
+
+  <div class="row2">
+    <div class="card"><div class="count" id="n-accts">0<small>accounts</small></div><button class="link" id="add-acct">Add account</button></div>
+    <div class="card"><div class="count" id="n-cats">0<small>categories</small></div><button class="link" id="add-cat">Add category</button></div>
+  </div>
+  <label class="btn quiet" for="qif-in" style="text-align:center">Load Quicken QIF lists</label>
+  <input id="qif-in" type="file" accept=".qif,.QIF,text/plain,*/*">
+  <div class="hint" id="load-note"></div>
+
+  <h2>Manage lists</h2>
+  <div class="row2">
+    <button class="btn quiet" id="manage-accts" style="margin-top:0">Accounts</button>
+    <button class="btn quiet" id="manage-cats" style="margin-top:0">Categories</button>
+  </div>
+
+  <h2>Export settings</h2>
+  <div class="setting"><span>Date format in QIF</span>
+    <select id="set-date"><option value="dmy">DD/MM/YYYY</option><option value="mdy">MM/DD/YYYY</option></select></div>
+  <div class="setting"><span>Export mode</span>
+    <select id="set-mode"><option value="account">Into each account</option><option value="cash">All into one Cash account</option></select></div>
+  <div class="setting" id="cash-row" style="display:none"><span>Cash account name</span><input type="text" id="set-cash" placeholder="e.g. QuickApp Import"></div>
+  <div class="setting"><span>Mark transactions cleared</span>
+    <select id="set-cleared"><option value="">No</option><option value="*">Cleared (*)</option></select></div>
+  <p style="margin-top:8px">Use “Into each account” if Quicken lets you import QIF straight into your bank and credit card accounts. If it refuses, pick the Cash account mode, import there, then move the transactions in Quicken.</p>
+
+  <h2>Backup</h2>
+  <div class="row2">
+    <button class="btn quiet" id="backup" style="margin-top:0">Save backup</button>
+    <label class="btn quiet" for="restore-in" style="margin-top:0;text-align:center">Restore backup</label>
+    <input id="restore-in" type="file" accept=".json,application/json,*/*">
+  </div>
+  <button class="btn danger" id="wipe">Erase everything</button>
+  <p style="margin-top:14px">Your data lives only on this phone. Save a backup now and then, and before deleting the app.</p>
+</section>
+</main>
+
+<nav>
+  <button data-go="enter" class="on"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>Enter</button>
+  <button data-go="ledger"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 9h8M8 13h8M8 17h5"/></svg>Ledger<span class="badge" id="badge" style="display:none"></span></button>
+  <button data-go="setup"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Setup</button>
+</nav>
+
+<div class="sheet" id="sheet">
+  <div class="panel">
+    <div class="bar"><input id="sheet-q" type="search" placeholder="Search"><button class="link" id="sheet-close">Done</button></div>
+    <div class="list" id="sheet-list"></div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= storage ================= */
+const KEY='quickapp-v1';
+const blank=()=>({accounts:[],categories:[],tx:[],payees:{},settings:{date:'dmy',mode:'account',cash:'',cleared:''}});
+let db=load();
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY));return d?Object.assign(blank(),d,{settings:Object.assign(blank().settings,d.settings||{})}):blank()}catch(e){return blank()}}
+function save(){localStorage.setItem(KEY,JSON.stringify(db))}
+const $=s=>document.querySelector(s);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const money=n=>(n<0?'−':'')+Math.abs(n).toLocaleString('en-CA',{minimumFractionDigits:2,maximumFractionDigits:2});
+const todayISO=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2200)}
+
+/* ================= navigation ================= */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>go(b.dataset.go));
+function go(name){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id==='s-'+name));
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.go===name));
+  if(name==='ledger')renderLedger(); if(name==='setup')renderSetup(); if(name==='enter')renderChips();
+  $('main').scrollTop=0;
+}
+
+/* ================= entry form ================= */
+let form={id:null,account:null,sign:-1,category:'',splits:[]};
+let editing=null;
+
+function resetForm(){
+  form={id:null,account:form.account||(db.accounts[0]&&db.accounts[0].name)||null,sign:-1,category:'',splits:[]};
+  editing=null;
+  $('#f-amount').value='';$('#f-payee').value='';$('#f-memo').value='';$('#f-num').value='';
+  $('#f-date').value=todayISO();
+  $('#splits').style.display='none';$('#toggle-splits').textContent='Split across categories';
+  $('#enter-title').textContent='New transaction';
+  $('#cancel-edit').style.display='none';$('#delete-tx').style.display='none';
+  $('#save').textContent='Save transaction';
+  setSign(-1);renderChips();renderCat();renderSplits();
+}
+function setSign(s){form.sign=s;$('#sign-out').classList.toggle('on',s<0);$('#sign-in').classList.toggle('on',s>0);$('#f-amount').classList.toggle('in',s>0)}
+$('#sign-out').onclick=()=>setSign(-1);$('#sign-in').onclick=()=>setSign(1);
+
+function renderChips(){
+  const c=$('#acct-chips');c.innerHTML='';
+  if(!db.accounts.length){c.innerHTML='<span class="hint">No accounts yet. Load your Quicken lists in Setup.</span>';return}
+  if(!db.accounts.some(a=>a.name===form.account))form.account=db.accounts[0].name;
+  db.accounts.forEach(a=>{const b=document.createElement('button');b.className='chip'+(a.name===form.account?' on':'');b.textContent=a.name;
+    b.onclick=()=>{form.account=a.name;renderChips()};c.appendChild(b)});
+  const on=c.querySelector('.on');if(on)on.scrollIntoView({inline:'center',block:'nearest'});
+  $('#enter-sub').textContent=db.tx.filter(t=>!t.exported).length+' waiting to export';
+}
+function renderCat(){$('#f-cat').innerHTML=form.category?`<span>${esc(form.category)}</span>`:'<span class="ph">Choose category</span>'}
+$('#f-cat').onclick=()=>pickCategory(v=>{form.category=v;renderCat()});
+
+/* payee memory: autofill last category and account */
+function renderPayeeList(){$('#payee-list').innerHTML=Object.keys(db.payees).sort().map(p=>`<option value="${esc(p)}">`).join('')}
+$('#f-payee').addEventListener('change',()=>{const m=db.payees[$('#f-payee').value.trim()];if(m&&!editing){if(!form.category&&m.cat){form.category=m.cat;renderCat()}if(m.acct&&db.accounts.some(a=>a.name===m.acct)){form.account=m.acct;renderChips()}}});
+
+/* splits */
+$('#toggle-splits').onclick=()=>{const s=$('#splits');const show=s.style.display==='none';s.style.display=show?'block':'none';
+  $('#toggle-splits').textContent=show?'Remove splits':'Split across categories';
+  if(show&&!form.splits.length){form.splits=[{cat:form.category||'',amt:'',memo:''},{cat:'',amt:'',memo:''}]}if(!show)form.splits=[];renderSplits()};
+function renderSplits(){
+  const w=$('#splits');w.innerHTML='';if(!form.splits.length)return;
+  form.splits.forEach((s,i)=>{const r=document.createElement('div');r.className='split';
+    r.innerHTML=`<button class="pick">${s.cat?esc(s.cat):'<span class="ph">Category</span>'}</button><input type="text" inputmode="decimal" placeholder="0.00" value="${s.amt}"><button>×</button>`;
+    r.children[0].onclick=()=>pickCategory(v=>{s.cat=v;renderSplits()});
+    r.children[1].oninput=e=>{s.amt=e.target.value;splitTotal()};
+    r.children[2].onclick=()=>{form.splits.splice(i,1);if(form.splits.length<2)form.splits.push({cat:'',amt:'',memo:''});renderSplits()};
+    w.appendChild(r)});
+  const add=document.createElement('button');add.className='link';add.textContent='Add a line';add.onclick=()=>{form.splits.push({cat:'',amt:'',memo:''});renderSplits()};w.appendChild(add);
+  const tot=document.createElement('div');tot.className='split-total';tot.id='split-total';w.appendChild(tot);splitTotal();
+}
+function splitTotal(){const el=$('#split-total');if(!el)return;const sum=form.splits.reduce((a,s)=>a+(parseFloat(s.amt)||0),0);const amt=parseFloat($('#f-amount').value)||0;
+  const diff=Math.round((amt-sum)*100)/100;el.className='split-total'+(diff?' bad':'');el.innerHTML=`<span>Splits total ${money(sum)}</span><span>${diff?('Remaining '+money(diff)):'Balanced'}</span>`}
+$('#f-amount').addEventListener('input',splitTotal);
+
+/* save / edit / delete */
+$('#save').onclick=()=>{
+  const amt=Math.round(Math.abs(parseFloat($('#f-amount').value.replace(/[^0-9.\-]/g,''))||0)*100)/100;
+  if(!amt)return toast('Enter an amount');
+  if(!form.account)return toast('Choose an account');
+  const payee=$('#f-payee').value.trim();if(!payee)return toast('Enter a payee');
+  const date=$('#f-date').value;if(!date)return toast('Choose a date');
+  let splits=null;
+  if(form.splits.length){splits=form.splits.filter(s=>s.cat||s.amt).map(s=>({cat:s.cat,amt:Math.round((parseFloat(s.amt)||0)*100)/100,memo:''}));
+    const sum=Math.round(splits.reduce((a,s)=>a+s.amt,0)*100)/100;if(sum!==amt)return toast('Splits must add up to the amount');
+    if(splits.some(s=>!s.cat))return toast('Each split needs a category')}
+  const t={id:editing||uid(),account:form.account,date,payee,amount:form.sign*amt,category:splits?splits[0].cat:form.category,memo:$('#f-memo').value.trim(),num:$('#f-num').value.trim(),splits,exported:false};
+  if(editing){const i=db.tx.findIndex(x=>x.id===editing);t.exported=db.tx[i].exported;db.tx[i]=t}else db.tx.push(t);
+  db.payees[payee]={cat:t.category,acct:t.account};save();renderPayeeList();
+  toast(editing?'Transaction updated':`Saved ${money(t.amount)} to ${t.account}`);
+  const was=editing;resetForm();if(was)go('ledger');
+};
+function editTx(t){editing=t.id;form={id:t.id,account:t.account,sign:t.amount<0?-1:1,category:t.category,splits:t.splits?t.splits.map(s=>({cat:s.cat,amt:String(s.amt),memo:''})):[]};
+  $('#f-amount').value=Math.abs(t.amount).toFixed(2);$('#f-payee').value=t.payee;$('#f-memo').value=t.memo||'';$('#f-num').value=t.num||'';$('#f-date').value=t.date;
+  setSign(form.sign);renderChips();renderCat();
+  $('#splits').style.display=form.splits.length?'block':'none';$('#toggle-splits').textContent=form.splits.length?'Remove splits':'Split across categories';renderSplits();
+  $('#enter-title').textContent='Edit transaction';$('#save').textContent='Save changes';$('#cancel-edit').style.display='block';$('#delete-tx').style.display='block';go('enter')}
+$('#cancel-edit').onclick=()=>{resetForm();go('ledger')};
+$('#delete-tx').onclick=()=>{if(!confirm('Delete this transaction?'))return;db.tx=db.tx.filter(x=>x.id!==editing);save();resetForm();go('ledger');toast('Deleted')};
+
+/* ================= picker sheet ================= */
+let sheetCb=null;
+function openSheet(items,cb,opts={}){
+  sheetCb=cb;const list=$('#sheet-list'),q=$('#sheet-q');q.value='';q.placeholder=opts.placeholder||'Search';
+  const draw=()=>{const f=q.value.trim().toLowerCase();list.innerHTML='';
+    items.filter(it=>it.sect||!f||it.label.toLowerCase().includes(f)).forEach(it=>{const b=document.createElement('button');b.className='opt'+(it.sect?' sect':'');
+      b.innerHTML=esc(it.label)+(it.sub?`<small>${esc(it.sub)}</small>`:'');if(!it.sect)b.onclick=()=>{closeSheet();cb(it.value)};list.appendChild(b)});
+    if(opts.allowNew&&f){const b=document.createElement('button');b.className='opt new';b.textContent=`Use “${q.value.trim()}”`;b.onclick=()=>{closeSheet();opts.allowNew(q.value.trim());cb(q.value.trim())};list.prepend(b)}};
+  q.oninput=draw;draw();$('#sheet').classList.add('on');setTimeout(()=>q.focus(),50)}
+function closeSheet(){$('#sheet').classList.remove('on')}
+$('#sheet-close').onclick=closeSheet;$('#sheet').onclick=e=>{if(e.target.id==='sheet')closeSheet()};
+
+function pickCategory(cb){
+  const items=[];
+  const exp=db.categories.filter(c=>c.type!=='I'),inc=db.categories.filter(c=>c.type==='I');
+  if(exp.length){items.push({sect:1,label:'Expenses'});exp.forEach(c=>items.push({label:c.name,value:c.name}))}
+  if(inc.length){items.push({sect:1,label:'Income'});inc.forEach(c=>items.push({label:c.name,value:c.name}))}
+  if(db.accounts.length){items.push({sect:1,label:'Transfer to account'});db.accounts.forEach(a=>items.push({label:'['+a.name+']',value:'['+a.name+']'}))}
+  openSheet(items,cb,{placeholder:'Search categories',allowNew:n=>{if(!db.categories.some(c=>c.name===n)){db.categories.push({name:n,type:'E'});save()}}});
+}
+
+/* ================= ledger ================= */
+let showExported=false;
+function renderLedger(){
+  const w=$('#ledger');w.innerHTML='';
+  const rows=db.tx.filter(t=>showExported||!t.exported).sort((a,b)=>a.date<b.date?-1:a.date>b.date?1:0);
+  const pending=db.tx.filter(t=>!t.exported).length;
+  $('#ledger-sub').textContent=pending?pending+' to export':'All exported';
+  $('#export').disabled=!pending;$('#badge').style.display=pending?'inline-block':'none';$('#badge').textContent=pending;
+  $('#show-exported').textContent=showExported?'Hide exported':'Show exported';
+  if(!rows.length){w.innerHTML=`<div class="empty"><b>${db.tx.length?'Nothing waiting to export':'No transactions yet'}</b>${db.tx.length?'Everything has been sent to Quicken.':'Tap Enter to record your first one.'}</div>`;return}
+  const groups={};rows.forEach(t=>(groups[t.account]=groups[t.account]||[]).push(t));
+  Object.keys(groups).sort().forEach(acct=>{const g=document.createElement('div');g.className='group';
+    const sum=groups[acct].reduce((a,t)=>a+t.amount,0);
+    g.innerHTML=`<div class="group-head"><b>${esc(acct)}</b><span>${groups[acct].length} · net ${money(sum)}</span></div><div class="ruled"></div>`;
+    const list=g.querySelector('.ruled');
+    groups[acct].forEach(t=>{const b=document.createElement('button');b.className='tx'+(t.exported?' done':'');const d=new Date(t.date+'T12:00:00');
+      b.innerHTML=`<div class="d"><b>${d.getDate()}</b>${d.toLocaleString('en-CA',{month:'short'})}</div><div class="p"><b>${esc(t.payee)}</b><small>${esc(t.splits?'Split · '+t.splits.length+' categories':(t.category||'Uncategorized'))}${t.memo?' · '+esc(t.memo):''}</small></div><div class="a${t.amount>0?' in':''}">${money(t.amount)}</div>`;
+      b.onclick=()=>editTx(t);list.appendChild(b)});
+    w.appendChild(g)});
+}
+$('#show-exported').onclick=()=>{showExported=!showExported;renderLedger()};
+$('#clear-exported').onclick=()=>{const n=db.tx.filter(t=>t.exported).length;if(!n)return toast('Nothing exported to clear');if(!confirm(`Remove ${n} exported transaction${n>1?'s':''} from this phone? They stay in Quicken.`))return;db.tx=db.tx.filter(t=>!t.exported);save();renderLedger();toast('Cleared')};
+
+/* ================= QIF export ================= */
+const TYPE_HDR={Bank:'Bank',CCard:'CCard',Cash:'Cash','Oth A':'Oth A','Oth L':'Oth L',Invst:'Invst'};
+function qifDate(iso){const[y,m,d]=iso.split('-');return db.settings.date==='mdy'?`${m}/${d}/${y}`:`${d}/${m}/${y}`}
+function buildQIF(list){
+  const S=db.settings,CR='\r\n';let out='';
+  const byAcct={};list.forEach(t=>{const k=S.mode==='cash'?(S.cash||'Cash'):t.account;(byAcct[k]=byAcct[k]||[]).push(t)});
+  Object.keys(byAcct).forEach(name=>{
+    const acct=db.accounts.find(a=>a.name===name);const type=S.mode==='cash'?'Cash':(acct&&TYPE_HDR[acct.type]||'Bank');
+    out+='!Account'+CR+'N'+name+CR+'T'+type+CR+'^'+CR+'!Type:'+type+CR;
+    byAcct[name].sort((a,b)=>a.date<b.date?-1:1).forEach(t=>{
+      out+='D'+qifDate(t.date)+CR+'T'+t.amount.toFixed(2)+CR;
+      if(S.cleared)out+='C'+S.cleared+CR;
+      if(t.num)out+='N'+t.num+CR;
+      out+='P'+t.payee+CR;
+      let memo=t.memo||'';if(S.mode==='cash'&&t.account!==name)memo=('['+t.account+'] '+memo).trim();
+      if(memo)out+='M'+memo+CR;
+      if(t.splits){out+='L'+t.splits[0].cat+CR;const sign=t.amount<0?-1:1;t.splits.forEach(s=>{out+='S'+s.cat+CR+'E'+CR+'$'+(sign*s.amt).toFixed(2)+CR})}
+      else if(t.category)out+='L'+t.category+CR;
+      out+='^'+CR})});
+  return out;
+}
+$('#export').onclick=async()=>{
+  const list=db.tx.filter(t=>!t.exported);if(!list.length)return;
+  const text=buildQIF(list);const name='quickapp-'+todayISO()+'.qif';
+  const ok=await shareFile(name,text,'application/qif');
+  if(ok){list.forEach(t=>t.exported=true);save();renderLedger();toast(`Exported ${list.length} transaction${list.length>1?'s':''}`)}
+};
+async function shareFile(name,text,mime){
+  const file=new File([text],name,{type:mime});
+  if(navigator.canShare&&navigator.canShare({files:[file]})){try{await navigator.share({files:[file],title:name});return true}catch(e){if(e.name==='AbortError')return false}}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type:mime}));a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},2000);return true;
+}
+
+/* ================= QIF import (lists) ================= */
+function parseQIF(text){
+  const lines=text.replace(/\r/g,'').split('\n');let mode='',rec={};const accts=[],cats=[];
+  for(const raw of lines){const l=raw.trim();if(!l)continue;
+    if(l[0]==='!'){const h=l.slice(1).toLowerCase();if(h.startsWith('account')||h==='type:account')mode='acct';else if(h.startsWith('type:cat'))mode='cat';else if(h.startsWith('option')||h.startsWith('clear'))continue;else mode='skip';rec={};continue}
+    if(l==='^'){if(mode==='acct'&&rec.N)accts.push({name:rec.N,type:rec.T||'Bank',desc:rec.D||''});if(mode==='cat'&&rec.N)cats.push({name:rec.N,type:rec.I!==undefined?'I':'E',desc:rec.D||''});rec={};continue}
+    rec[l[0]]=l.slice(1).trim()}
+  return{accts,cats};
+}
+$('#qif-in').onchange=async e=>{const f=e.target.files[0];if(!f)return;const text=await f.text();const{accts,cats}=parseQIF(text);e.target.value='';
+  if(!accts.length&&!cats.length)return toast('No account or category lists found in that file');
+  let na=0,nc=0;accts.forEach(a=>{if(!db.accounts.some(x=>x.name===a.name)){db.accounts.push({name:a.name,type:TYPE_HDR[a.type]?a.type:'Bank'});na++}});
+  cats.forEach(c=>{if(!db.categories.some(x=>x.name===c.name)){db.categories.push({name:c.name,type:c.type});nc++}});
+  save();renderSetup();$('#load-note').textContent=`Loaded ${na} new account${na!==1?'s':''} and ${nc} new categor${nc!==1?'ies':'y'} from ${f.name}.`;toast('Lists loaded')};
+
+/* ================= setup screen ================= */
+function renderSetup(){$('#n-accts').innerHTML=db.accounts.length+'<small>accounts</small>';$('#n-cats').innerHTML=db.categories.length+'<small>categories</small>';
+  $('#set-date').value=db.settings.date;$('#set-mode').value=db.settings.mode;$('#set-cash').value=db.settings.cash;$('#set-cleared').value=db.settings.cleared;
+  $('#cash-row').style.display=db.settings.mode==='cash'?'flex':'none'}
+['date','mode','cash','cleared'].forEach(k=>$('#set-'+k).onchange=e=>{db.settings[k]=e.target.value;save();renderSetup()});
+
+$('#add-acct').onclick=()=>{const n=prompt('Account name (exactly as in Quicken)');if(!n)return;const t=prompt('Type: Bank, CCard, Cash, Oth A or Oth L','CCard')||'Bank';
+  if(db.accounts.some(a=>a.name===n.trim()))return toast('That account already exists');db.accounts.push({name:n.trim(),type:TYPE_HDR[t.trim()]?t.trim():'Bank'});save();renderSetup();toast('Account added')};
+$('#add-cat').onclick=()=>{const n=prompt('Category name (use Parent:Child for subcategories)');if(!n)return;if(db.categories.some(c=>c.name===n.trim()))return toast('That category already exists');
+  db.categories.push({name:n.trim(),type:confirm('Is this an income category? (Cancel = expense)')?'I':'E'});save();renderSetup();toast('Category added')};
+$('#manage-accts').onclick=()=>openSheet(db.accounts.map(a=>({label:a.name,sub:a.type,value:a.name})),name=>{
+  const used=db.tx.filter(t=>t.account===name).length;if(confirm(`Remove account “${name}”?${used?` ${used} transaction${used>1?'s use':' uses'} it and will keep the name.`:''}`)){db.accounts=db.accounts.filter(a=>a.name!==name);save();renderSetup();toast('Removed')}},{placeholder:'Tap an account to remove it'});
+$('#manage-cats').onclick=()=>openSheet(db.categories.map(c=>({label:c.name,sub:c.type==='I'?'income':'expense',value:c.name})),name=>{
+  if(confirm(`Remove category “${name}”?`)){db.categories=db.categories.filter(c=>c.name!==name);save();renderSetup();toast('Removed')}},{placeholder:'Tap a category to remove it'});
+
+$('#backup').onclick=()=>shareFile('quickapp-backup-'+todayISO()+'.json',JSON.stringify(db,null,1),'application/json');
+$('#restore-in').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{const d=JSON.parse(await f.text());if(!d.tx||!d.accounts)throw 0;
+  if(!confirm(`Replace everything on this phone with the backup (${d.tx.length} transactions)?`))return;db=Object.assign(blank(),d);save();resetForm();renderSetup();renderPayeeList();toast('Backup restored')}catch(x){toast('That file is not a Quick App backup')}e.target.value=''};
+$('#wipe').onclick=()=>{if(confirm('Erase all accounts, categories and transactions from this phone?')&&confirm('This cannot be undone. Erase?')){db=blank();save();resetForm();renderSetup();renderPayeeList();toast('Erased')}};
+
+/* ================= util & boot ================= */
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+resetForm();renderPayeeList();renderLedger();
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
